@@ -1,15 +1,14 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace Co2Monitor
 {
-	class Program
+	internal class Program
 	{
-		static void Main(string[] args)
+		public static async Task Main()
 		{
+			var reader = new Co2Reader(dp => Console.WriteLine(dp));
+			await reader.Read();
 		}
 	}
 }
