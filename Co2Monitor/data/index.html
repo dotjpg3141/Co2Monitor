@@ -1,0 +1,117 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+	<script type="text/javascript">
+		setInterval(function() {
+			var xhr = new XMLHttpRequest();
+			xhr.onload = function (e) {
+				var response = e.target.responseType === 'json' ? xhr.response : JSON.parse(e.target.responseText);
+				updateViewModel(response);
+			};
+			xhr.responseType = "json";
+			xhr.open("GET", "update", true);
+			xhr.send();
+		}, 1000);
+
+		function updateViewModel(obj) {
+			update({
+				obj: obj,
+				id:  "time",
+				map: function(dt) {
+					return new Date(dt).toLocaleString();
+				}
+			});
+			update({
+				obj: obj,
+				id:  "temperature",
+				map: function(t) {
+					return t.toFixed(1);
+				}
+			});
+			update({
+				obj: obj,
+				id:  "co2",
+				classes: function(num) {
+					if (num < 800) return "green";
+					if (num < 1200) return "yellow";
+					return "red";
+				}
+			});
+		}
+
+		function update(options) {
+			var obj = options.obj;
+			var id = options.id;
+			var map = options.map || function(input) { return input; };
+			var classes = options.classes || function() { return ""; };
+			var className = classes(obj[id]);
+
+			document.getElementById(id).className = className;
+			document.getElementById(id + "-value").innerHTML = map(obj[id]);
+		}
+	</script>
+
+	<style>
+		html, body {
+			font-family: Consolas, Courier New, monospace;
+			background-color: #353535;
+			color: white;
+		}
+
+		table {
+			margin: auto;
+		}
+
+		table tr td:first-child {
+			text-align: end;
+		}
+
+		#co2, #temperature {
+			font-size: x-large;
+		}
+
+		#time {
+			color: gray;
+			font-size: small;
+		}
+
+		#co2.green {
+			color: lime;
+		}
+
+		#co2.yellow {
+			color: yellow;
+		}
+
+		#co2.red {
+			color: red;
+		}
+	</style>
+</head>
+	<body>
+		<table>
+			<tr id="temperature">
+				<td>Temperature:</td>
+				<td><span id="temperature-value">$temperature$</span> °C</td>
+			</tr>
+			<tr id="co2">
+				<td>CO<sub>2</sub>:</td>
+				<td><span id="co2-value">$co2$</span> ppm</td>
+			</tr>
+			<tr id="time">
+				<td>Last Refresh:</td>
+				<td><span id="time-value">$time$</span></td>
+			</tr>
+		</table>
+
+		<script>
+			updateViewModel({
+				time: "$time$",
+				temperature: $temperature$,
+				co2: $co2$,
+			});
+		</script>
+	</body>
+</html>

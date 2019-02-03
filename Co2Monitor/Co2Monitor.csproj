@@ -51,14 +51,23 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Co2Reader.cs" />
+    <Compile Include="Co2Webserver.cs" />
+    <Compile Include="DataManager.cs" />
     <Compile Include="DataPoint.cs" />
     <Compile Include="DataPointType.cs" />
+    <Compile Include="Logger.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Webserver.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
     <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="data\index.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

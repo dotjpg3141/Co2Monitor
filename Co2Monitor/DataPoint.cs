@@ -6,6 +6,7 @@ namespace Co2Monitor
 	{
 		public DataPointType Type { get; set; }
 		public double Value { get; set; }
+		public DateTime Time { get; set; }
 
 		public override string ToString()
 		{

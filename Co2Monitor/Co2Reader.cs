@@ -7,16 +7,12 @@ namespace Co2Monitor
 {
 	public class Co2Reader
 	{
-		private readonly Action<DataPoint> OnDataPointReceived;
+		public bool CurrentlyConnected { get; private set; }
+		public Logger Logger { get; set; } = new Logger("CO₂-Monitor");
 
-		public Co2Reader(Action<DataPoint> onDataPointReceived)
+		public async Task Read(Action<DataPoint> onDataPointReceived)
 		{
-			this.OnDataPointReceived = onDataPointReceived ?? throw new ArgumentNullException(nameof(this.OnDataPointReceived));
-		}
-
-		public async Task Read()
-		{
-			WriteLine("Waiting for device...", ConsoleColor.Gray);
+			this.Logger.Verbose("Waiting for device...");
 			while (true)
 			{
 				var device = HidDevices.Enumerate(0x04D9, 0xA052).FirstOrDefault();
@@ -27,8 +23,9 @@ namespace Co2Monitor
 				}
 
 				device.OpenDevice();
-				WriteLine($"Device connected", ConsoleColor.Green);
+				this.Logger.Verbose($"Device connected");
 				device.WriteFeatureData(new byte[9]); // encryption key
+				this.CurrentlyConnected = true;
 
 				while (device.IsConnected)
 				{
@@ -36,21 +33,15 @@ namespace Co2Monitor
 					var dp = Decode(result.Data);
 					if (dp != null)
 					{
-						this.OnDataPointReceived(dp.Value);
+						onDataPointReceived(dp.Value);
 					}
 				}
 
 				device.CloseDevice();
-				WriteLine("Device disconnected.", ConsoleColor.Red);
-				WriteLine("Waiting for device...", ConsoleColor.Gray);
+				this.CurrentlyConnected = false;
+				this.Logger.Error("Device disconnected.");
+				this.Logger.Verbose("Waiting for device...");
 			}
-		}
-
-		private static void WriteLine(object value, ConsoleColor color)
-		{
-			Console.ForegroundColor = color;
-			Console.WriteLine(value);
-			Console.ResetColor();
 		}
 
 		private static DataPoint? Decode(byte[] data)
@@ -71,6 +62,7 @@ namespace Co2Monitor
 					{
 						Type = DataPointType.Temperature,
 						Value = value / 16.0 - 273.15,
+						Time = DateTime.UtcNow,
 					};
 
 				case 0xD4:
@@ -78,6 +70,7 @@ namespace Co2Monitor
 					{
 						Type = DataPointType.CO2,
 						Value = value,
+						Time = DateTime.UtcNow,
 					};
 
 				default:
