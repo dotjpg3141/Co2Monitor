@@ -1,6 +1,9 @@
-﻿using System.Diagnostics;
-using System.Globalization;
+﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Serialization;
+using System;
+using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Co2Monitor
@@ -32,9 +35,9 @@ namespace Co2Monitor
 					indexContent = File.ReadAllText(Path.Combine("../..", indexPath));
 				}
 
-				var time = manager.LastTime.ToString("o");
-				var temperature = manager.LastTemperature.ToString(CultureInfo.InvariantCulture);
-				var co2 = manager.LastCo2.ToString(CultureInfo.InvariantCulture);
+				var time = manager.LastTime;
+				var temperature = manager.Temperature.LastValue;
+				var co2 = manager.Co2.LastValue;
 
 				using (var output = new StreamWriter(context.Response.OutputStream))
 				{
@@ -42,28 +45,42 @@ namespace Co2Monitor
 					{
 						case "/update":
 							context.Response.AddHeader("Content-Type", "application/json; charset=utf-8");
-							WriteJson(output, time, temperature, co2);
+							output.WriteLine(ToJson(new
+							{
+								Time = time,
+								Temperature = temperature,
+								Co2 = co2,
+							}));
 							break;
 
 						default:
 							output.WriteLine(indexContent
-								.Replace($"${TimeKey}$", time)
-								.Replace($"${TemperatureKey}$", temperature)
-								.Replace($"${CO2Key}$", co2));
+								.Replace("$time$", ToJson(time))
+								.Replace("$temperature$", ToJson(temperature))
+								.Replace("$co2$", ToJson(co2))
+								.Replace("$temperatureHistory$", ToJson(manager.Temperature))
+								.Replace("$co2History$", ToJson(manager.Co2)));
 							break;
 					}
 				}
 			});
 		}
 
-		private static void WriteJson(StreamWriter output, string time, string temperature, string co2)
+		private static string ToJson(object value)
 		{
-			output.WriteLine($@"
-{{ 
-	""{TimeKey}"":        ""{time}"", 
-	""{TemperatureKey}"": {temperature}, 
-	""{CO2Key}"":         {co2}
-}}");
+			return JsonConvert.SerializeObject(value, new JsonSerializerSettings()
+			{
+				ContractResolver = new CamelCasePropertyNamesContractResolver(),
+			});
+		}
+		private static string ToJson(DataSeries series)
+		{
+			var today = DateTime.Today;
+			return ToJson(series.GetData().Where(item => item.Item1 >= today).Select(item => new
+			{
+				X = item.Item1,
+				Y = item.Item2,
+			}));
 		}
 	}
 }

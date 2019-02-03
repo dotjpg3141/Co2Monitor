@@ -1,13 +1,31 @@
 ﻿<!DOCTYPE html>
 <html>
+
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 	<script type="text/javascript">
-		setInterval(function() {
-			var xhr = new XMLHttpRequest();
+		"use strict";
+
+		let lastUpdateTime = 0;
+		let context;
+		let data = {
+			co2: $co2History$,
+			temperature: $temperatureHistory$,
+		};
+
+		for (let i = 0; i < data.co2.length; i++) {
+			data.co2[i].x = new Date(data.co2[i].x).getTime();
+		}
+
+		for (let i = 0; i < data.temperature.length; i++) {
+			data.temperature[i].x = new Date(data.temperature[i].x).getTime();
+		}
+
+		setInterval(function () {
+			let xhr = new XMLHttpRequest();
 			xhr.onload = function (e) {
-				var response = e.target.responseType === 'json' ? xhr.response : JSON.parse(e.target.responseText);
+				let response = e.target.responseType === 'json' ? xhr.response : JSON.parse(e.target.responseText);
 				updateViewModel(response);
 			};
 			xhr.responseType = "json";
@@ -16,48 +34,181 @@
 		}, 1000);
 
 		function updateViewModel(obj) {
+
+			let time = new Date(obj.time);
+			let temp = obj.temperature;
+			let co2 = obj.co2;
+
+			let co2Classes = "red";
+			if (co2 < 800) co2Classes = "green";
+			if (co2 < 1200) co2Classes = "yellow";
+
 			update({
-				obj: obj,
-				id:  "time",
-				map: function(dt) {
-					return new Date(dt).toLocaleString();
-				}
+				id: "time",
+				value: time.toLocaleString(),
 			});
+
 			update({
-				obj: obj,
-				id:  "temperature",
-				map: function(t) {
-					return t.toFixed(1);
-				}
+				id: "temperature",
+				value: temp.toFixed(1),
 			});
+
 			update({
-				obj: obj,
-				id:  "co2",
-				classes: function(num) {
-					if (num < 800) return "green";
-					if (num < 1200) return "yellow";
-					return "red";
-				}
+				id: "co2",
+				value: co2,
+				classes: co2Classes
 			});
+
+			let updateTime = time.getTime();
+			if (updateTime != lastUpdateTime) {
+				lastUpdateTime = updateTime;
+
+				data.co2.push({
+					x: updateTime,
+					y: co2,
+				});
+
+				data.temperature.push({
+					x: updateTime,
+					y: temp,
+				});
+
+				renderChart();
+			}
 		}
 
 		function update(options) {
-			var obj = options.obj;
-			var id = options.id;
-			var map = options.map || function(input) { return input; };
-			var classes = options.classes || function() { return ""; };
-			var className = classes(obj[id]);
+			let id = options.id;
+			let classes = options.classes || "";
 
-			document.getElementById(id).className = className;
-			document.getElementById(id + "-value").innerHTML = map(obj[id]);
+			document.getElementById(id).className = classes;
+			document.getElementById(id + "-value").innerHTML = options.value;
 		}
+
+		function renderChart() {
+
+			if (!context) {
+				return;
+			}
+
+			let parent = context.canvas.parentElement;
+
+			let width = parent.offsetWidth;
+			let height = Math.max(parent.offsetHeight - parent.offsetTop * 1.2, 10);
+
+			if (width != context.canvas.width || height != context.canvas.height) {
+				context.canvas.width = width;
+				context.canvas.height = height;
+			}
+
+			let timeSpan;
+			switch (location.pathname.replace(/.*\//g, "")) {
+				case "seconds":
+					timeSpan = 1000;
+					break;
+
+				default:
+				case "minutes":
+					timeSpan = 1000 * 60;
+					break;
+
+				case "hours":
+					timeSpan = 1000 * 60 * 60;
+					break;
+			}
+
+			timeSpan *= 10;
+
+			let now = new Date().getTime();
+
+			function getX(time) {
+				return width - (now - time) / timeSpan * width;
+			}
+
+			context.fillStyle = "#202020";
+			context.fillRect(0, 0, context.canvas.width, context.canvas.height);
+
+			context.strokeStyle = "#404040";
+			let verticalBarCount = 10;
+			let timeBetweenVertialBars = timeSpan / verticalBarCount;
+			for (let i = 1; i < verticalBarCount; i++) {
+				let x = getX(now - i * timeBetweenVertialBars);
+				context.beginPath();
+				context.moveTo(x, 0);
+				context.lineTo(x, height);
+				context.stroke();
+			}
+
+			function renderSeries(items) {
+				if (!items.length) {
+					return;
+				}
+
+				let minY = 0;
+				let maxY = 2500;
+				let valueSpan = maxY - minY;
+
+				function getY(value) {
+					let y = height - (value - minY) / valueSpan * height;
+					if (y < minY) y = minY;
+					if (y > maxY) y = maxY;
+					return y;
+				}
+
+				function drawHoriziontal(min, max) {
+					min = getY(min);
+					max = getY(max);
+					context.fillRect(0, min, width, max - min);
+				}
+
+				context.globalAlpha = 0.1;
+				context.fillStyle = "red";
+				drawHoriziontal(1200, maxY);
+				context.fillStyle = "yellow";
+				drawHoriziontal(800, 1200);
+				context.fillStyle = "lime";
+				drawHoriziontal(minY, 800);
+				context.globalAlpha = 1;
+
+				function getPixelPosition(index) {
+					let item = items[index];
+					let x = getX(item.x);
+					let y = getY(item.y);
+					return { x: x, y: y };
+				}
+
+				context.strokeStyle = "white";
+				context.beginPath();
+
+				let pixel = getPixelPosition(0);
+				context.moveTo(pixel.x, pixel.y);
+
+				for (let i = 1; i < items.length; i++) {
+					pixel = getPixelPosition(i);
+					context.lineTo(pixel.x, pixel.y);
+				}
+
+				context.lineTo(width, pixel.y);
+				context.stroke();
+			}
+
+			renderSeries(data.co2);
+		}
+
+		window.onresize = renderChart;
+
 	</script>
 
 	<style>
-		html, body {
+		html,
+		body {
 			font-family: Consolas, Courier New, monospace;
 			background-color: #353535;
 			color: white;
+			width: 100%;
+			height: 100%;
+			margin: 0;
+			overflow: hidden;
 		}
 
 		table {
@@ -68,7 +219,8 @@
 			text-align: end;
 		}
 
-		#co2, #temperature {
+		#co2,
+		#temperature {
 			font-size: x-large;
 		}
 
@@ -88,30 +240,75 @@
 		#co2.red {
 			color: red;
 		}
+
+		#links {
+			margin: auto;
+			margin-top: 1em;
+			margin-bottom: 1em;
+			text-align: center;
+		}
+
+		#links a {
+			background-color: #212121;
+			padding: 0.25em;
+			text-decoration: none;
+			color: white;
+		}
+
+		#links a:hover {
+			color: red;
+			background-color: #1a1a1a;
+		}
+
+		#chart-container {
+			width: 75%;
+			height: 100%;
+			margin: auto;
+			overflow: hidden;
+		}
+
+		#chart {
+			display: block;
+			margin: 0;
+			padding: 0;
+		}
 	</style>
 </head>
-	<body>
-		<table>
-			<tr id="temperature">
-				<td>Temperature:</td>
-				<td><span id="temperature-value">$temperature$</span> °C</td>
-			</tr>
-			<tr id="co2">
-				<td>CO<sub>2</sub>:</td>
-				<td><span id="co2-value">$co2$</span> ppm</td>
-			</tr>
-			<tr id="time">
-				<td>Last Refresh:</td>
-				<td><span id="time-value">$time$</span></td>
-			</tr>
-		</table>
 
-		<script>
-			updateViewModel({
-				time: "$time$",
-				temperature: $temperature$,
-				co2: $co2$,
-			});
-		</script>
-	</body>
+<body>
+	<table>
+		<tr id="temperature">
+			<td>Temperature:</td>
+			<td><span id="temperature-value">$temperature$</span> °C</td>
+		</tr>
+		<tr id="co2">
+			<td>CO<sub>2</sub>:</td>
+			<td><span id="co2-value">$co2$</span> ppm</td>
+		</tr>
+		<tr id="time">
+			<td>Last Refresh:</td>
+			<td><span id="time-value">$time$</span></td>
+		</tr>
+	</table>
+
+	<div id="links">
+		<a href="/seconds">10 Seconds</a>
+		<a href="/minutes">10 Minutes</a>
+		<a href="/hours">10 Hours</a>
+	</div>
+
+	<div id="chart-container">
+		<canvas id="chart"></canvas>
+	</div>
+
+	<script>
+		context = document.getElementById("chart").getContext("2d");
+		updateViewModel({
+			time: $time$,
+			temperature: $temperature$,
+			co2: $co2$
+		});
+	</script>
+</body>
+
 </html>
