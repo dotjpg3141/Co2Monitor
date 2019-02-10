@@ -103,23 +103,26 @@
 				context.canvas.height = height;
 			}
 
-			let timeSpan;
+			let timeSpan = 1000 * 60 * 60;
+			let verticalBarCount;
+
 			switch (location.pathname.replace(/.*\//g, "")) {
-				case "seconds":
-					timeSpan = 1000;
-					break;
-
 				default:
-				case "minutes":
-					timeSpan = 1000 * 60;
+				case "hour":
+					timeSpan *= 1;
+					verticalBarCount = 10;
 					break;
 
-				case "hours":
-					timeSpan = 1000 * 60 * 60;
+				case "day":
+					timeSpan *= 24;
+					verticalBarCount = 24;
+					break;
+
+				case "week":
+					timeSpan *= 24 * 7;
+					verticalBarCount = 7;
 					break;
 			}
-
-			timeSpan *= 10;
 
 			let now = new Date().getTime();
 
@@ -131,7 +134,6 @@
 			context.fillRect(0, 0, context.canvas.width, context.canvas.height);
 
 			context.strokeStyle = "#404040";
-			let verticalBarCount = 10;
 			let timeBetweenVertialBars = timeSpan / verticalBarCount;
 			for (let i = 1; i < verticalBarCount; i++) {
 				let x = getX(now - i * timeBetweenVertialBars);
@@ -303,9 +305,9 @@
 	</table>
 
 	<div id="links">
-		<a href="/seconds">10 Seconds</a>
-		<a href="/minutes">10 Minutes</a>
-		<a href="/hours">10 Hours</a>
+		<a href="/hour">Hour</a>
+		<a href="/day">Day</a>
+		<a href="/week">Week</a>
 	</div>
 
 	<div id="chart-container">

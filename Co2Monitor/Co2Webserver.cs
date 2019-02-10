@@ -75,8 +75,8 @@ namespace Co2Monitor
 		}
 		private static string ToJson(DataSeries series)
 		{
-			var today = DateTime.Today;
-			return ToJson(series.GetData().Where(item => item.Item1 >= today).Select(item => new
+			var minDate = DateTime.Today.AddDays(-7);
+			return ToJson(series.GetData().Where(item => item.Item1 >= minDate).Select(item => new
 			{
 				X = item.Item1,
 				Y = item.Item2,
