@@ -22,16 +22,18 @@
 			data.temperature[i].x = new Date(data.temperature[i].x).getTime();
 		}
 
+		let interval = 1000;
 		setInterval(function () {
 			let xhr = new XMLHttpRequest();
 			xhr.onload = function (e) {
 				let response = e.target.responseType === 'json' ? xhr.response : JSON.parse(e.target.responseText);
 				updateViewModel(response);
 			};
+			xhr.timeout = interval * 3;
 			xhr.responseType = "json";
 			xhr.open("GET", "update", true);
 			xhr.send();
-		}, 1000);
+		}, interval);
 
 		function updateViewModel(obj) {
 
