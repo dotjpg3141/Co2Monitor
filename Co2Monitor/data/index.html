@@ -22,18 +22,18 @@
 			data.temperature[i].x = new Date(data.temperature[i].x).getTime();
 		}
 
-		let interval = 1000;
+		let updateInterval = 1000;
 		setInterval(function () {
 			let xhr = new XMLHttpRequest();
 			xhr.onload = function (e) {
 				let response = e.target.responseType === 'json' ? xhr.response : JSON.parse(e.target.responseText);
 				updateViewModel(response);
 			};
-			xhr.timeout = interval * 3;
+			xhr.timeout = updateInterval * 3;
 			xhr.responseType = "json";
 			xhr.open("GET", "update", true);
 			xhr.send();
-		}, interval);
+		}, updateInterval);
 
 		function updateViewModel(obj) {
 
@@ -152,6 +152,9 @@
 				let maxY = 2500;
 				let valueSpan = maxY - minY;
 
+				let maxTimeGap = updateInterval * 10;
+				let maxTimeGapPixel = getX(maxTimeGap) - getX(0);
+
 				function getY(value) {
 					let y = height - (value - minY) / valueSpan * height;
 					if (y < minY) y = minY;
@@ -174,26 +177,34 @@
 				drawHoriziontal(minY, 800);
 				context.globalAlpha = 1;
 
-				function getPixelPosition(index) {
-					let item = items[index];
-					let x = getX(item.x);
-					let y = getY(item.y);
-					return { x: x, y: y };
+				let points = [];
+				for (let i = 0; i < items.length; i++) {
+					points.push({
+						x: getX(items[i].x),
+						y: getY(items[i].y),
+					});
 				}
+				points.push({ x: width, y: points[points.length - 1].y })
 
 				context.strokeStyle = "white";
+				context.lineWidth = 2;
 				context.beginPath();
-
-				let pixel = getPixelPosition(0);
-				context.moveTo(pixel.x, pixel.y);
-
-				for (let i = 1; i < items.length; i++) {
-					pixel = getPixelPosition(i);
-					context.lineTo(pixel.x, pixel.y);
+				for (let i = 0; i < points.length; i++) {
+					let element = points[i];
+					if (i == 0
+						|| i == points.length - 1
+						|| points[i].x - points[i - 1].x > maxTimeGapPixel) {
+						if (i != 0) {
+							context.stroke();
+						}
+						if (i != points.length - 1) {
+							context.beginPath();
+							context.moveTo(element.x, element.y);
+						}
+					} else {
+						context.lineTo(element.x, element.y);
+					}
 				}
-
-				context.lineTo(width, pixel.y);
-				context.stroke();
 			}
 
 			renderSeries(data.co2);
