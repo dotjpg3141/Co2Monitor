@@ -27,6 +27,8 @@ namespace Co2Monitor
 				device.WriteFeatureData(new byte[9]); // encryption key
 				this.CurrentlyConnected = true;
 
+				await Task.Delay(10000); // wait that device is initialized
+
 				while (device.IsConnected)
 				{
 					var result = await device.ReadReportAsync();
