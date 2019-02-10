@@ -215,8 +215,14 @@
 			margin: auto;
 		}
 
-		table tr td:first-child {
+		table tr td:nth-child(1) {
 			text-align: end;
+			padding-right: 0;
+		}
+
+		table tr td:nth-child(2) {
+			text-align: center;
+			padding-left: 0;
 		}
 
 		#co2,
@@ -278,15 +284,18 @@
 <body>
 	<table>
 		<tr id="temperature">
-			<td>Temperature:</td>
+			<td>Temperature</td>
+			<td>:</td>
 			<td><span id="temperature-value">$temperature$</span> °C</td>
 		</tr>
 		<tr id="co2">
-			<td>CO<sub>2</sub>:</td>
+			<td>CO<sub>2</sub></td>
+			<td>:</td>
 			<td><span id="co2-value">$co2$</span> ppm</td>
 		</tr>
 		<tr id="time">
-			<td>Last Refresh:</td>
+			<td>Last Refresh</td>
+			<td>:</td>
 			<td><span id="time-value">$time$</span></td>
 		</tr>
 	</table>
