@@ -16,7 +16,7 @@ namespace Co2Monitor
 
 		public async Task Run(DataManager manager, int port)
 		{
-			var server = new Webserver(8080);
+			var server = new Webserver(port);
 
 			if (Debugger.IsAttached)
 			{
