@@ -133,49 +133,32 @@
 			context.fillStyle = "#202020";
 			context.fillRect(0, 0, context.canvas.width, context.canvas.height);
 
-			context.strokeStyle = "#404040";
-			let timeBetweenVertialBars = timeSpan / verticalBarCount;
-			for (let i = 1; i < verticalBarCount; i++) {
-				let x = getX(now - i * timeBetweenVertialBars);
-				context.beginPath();
-				context.moveTo(x, 0);
-				context.lineTo(x, height);
-				context.stroke();
-			}
+			function renderSeries(items, options) {
 
-			function renderSeries(items) {
 				if (!items.length) {
 					return;
 				}
 
-				let minY = 0;
-				let maxY = 2500;
+				let minY = options.minY;
+				let maxY = options.maxY;
 				let valueSpan = maxY - minY;
 
 				let maxTimeGap = updateInterval * 10;
 				let maxTimeGapPixel = getX(maxTimeGap) - getX(0);
 
 				function getY(value) {
-					let y = height - (value - minY) / valueSpan * height;
-					if (y < minY) y = minY;
-					if (y > maxY) y = maxY;
-					return y;
+					return height - (value - minY) / valueSpan * height;
 				}
 
-				function drawHoriziontal(min, max) {
-					min = getY(min);
-					max = getY(max);
-					context.fillRect(0, min, width, max - min);
+				if (options.backgrounds) {
+					for (let i = 0; i < options.backgrounds.length; i++) {
+						let background = options.backgrounds[i];
+						context.fillStyle = background.fillStyle;
+						let min = getY(background.min == null ? minY : background.min);
+						let max = getY(background.max == null ? maxY : background.max);
+						context.fillRect(0, min, width, max - min);
+					}
 				}
-
-				context.globalAlpha = 0.1;
-				context.fillStyle = "red";
-				drawHoriziontal(1200, maxY);
-				context.fillStyle = "yellow";
-				drawHoriziontal(800, 1200);
-				context.fillStyle = "lime";
-				drawHoriziontal(minY, 800);
-				context.globalAlpha = 1;
 
 				let points = [];
 				for (let i = 0; i < items.length; i++) {
@@ -186,7 +169,7 @@
 				}
 				points.push({ x: width, y: points[points.length - 1].y })
 
-				context.strokeStyle = "white";
+				context.strokeStyle = options.strokeStyle;
 				context.lineWidth = 2;
 				context.beginPath();
 				for (let i = 0; i < points.length; i++) {
@@ -207,7 +190,34 @@
 				}
 			}
 
-			renderSeries(data.co2);
+			renderSeries(data.co2, {
+				minY: 0,
+				maxY: 2500,
+				strokeStyle: "white",
+				backgrounds: [
+					{ fillStyle: "#1d361d", max: 800 },
+					{ fillStyle: "#36361d", min: 800, max: 1200 },
+					{ fillStyle: "#361d1d", min: 1200 },
+				],
+			});
+
+			renderSeries(data.temperature, {
+				minY: 0,
+				maxY: 50,
+				strokeStyle: "blue",
+			});
+
+			context.strokeStyle = "#404040";
+			context.globalAlpha = 0.5;
+			let timeBetweenVertialBars = timeSpan / verticalBarCount;
+			for (let i = 1; i < verticalBarCount; i++) {
+				let x = getX(now - i * timeBetweenVertialBars);
+				context.beginPath();
+				context.moveTo(x, 0);
+				context.lineTo(x, height);
+				context.stroke();
+			}
+			context.globalAlpha = 1.0;
 		}
 
 		window.onresize = renderChart;
@@ -238,6 +248,10 @@
 		table tr td:nth-child(2) {
 			text-align: center;
 			padding-left: 0;
+		}
+
+		.circle::after {
+			content: "\2022";
 		}
 
 		#co2,
@@ -299,12 +313,18 @@
 <body>
 	<table>
 		<tr id="temperature">
-			<td>Temperature</td>
+			<td>
+				<span class="circle" style="color: blue"></span>
+				Temperature
+			</td>
 			<td>:</td>
 			<td><span id="temperature-value">$temperature$</span> °C</td>
 		</tr>
 		<tr id="co2">
-			<td>CO<sub>2</sub></td>
+			<td>
+				<span class="circle" style="color: white"></span>
+				CO<sub>2</sub>
+			</td>
 			<td>:</td>
 			<td><span id="co2-value">$co2$</span> ppm</td>
 		</tr>
