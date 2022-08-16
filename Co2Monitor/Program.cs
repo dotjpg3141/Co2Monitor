@@ -6,7 +6,7 @@ namespace Co2Monitor
 {
     internal class Program
     {
-        private readonly DataManager manager = new DataManager();
+        private readonly DataManager manager = new();
 
         public static async Task Main()
         {

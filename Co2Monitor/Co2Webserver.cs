@@ -11,10 +11,6 @@ namespace Co2Monitor
 {
 	internal class Co2Webserver
 	{
-		private const string TimeKey = "time";
-		private const string TemperatureKey = "temperature";
-		private const string CO2Key = "co2";
-
 		public async Task Run(DataManager manager, int port)
 		{
 			var server = new Webserver(port);
@@ -41,31 +37,29 @@ namespace Co2Monitor
 				var temperature = manager.Temperature.LastValue;
 				var co2 = manager.Co2.LastValue;
 
-				using (var output = new StreamWriter(context.Response.OutputStream))
-				{
-					switch (context.Request.RawUrl?.ToLowerInvariant().TrimEnd('/'))
-					{
-						case "/update":
-							context.Response.AddHeader("Content-Type", "application/json; charset=utf-8");
-							output.WriteLine(ToJson(new
-							{
-								Time = time,
-								Temperature = temperature,
-								Co2 = co2,
-							}));
-							break;
+                using var output = new StreamWriter(context.Response.OutputStream);
+                switch (context.Request.RawUrl?.ToLowerInvariant().TrimEnd('/'))
+                {
+                    case "/update":
+                        context.Response.AddHeader("Content-Type", "application/json; charset=utf-8");
+                        output.WriteLine(ToJson(new
+                        {
+                            Time = time,
+                            Temperature = temperature,
+                            Co2 = co2,
+                        }));
+                        break;
 
-						default:
-							output.WriteLine(indexContent
-								.Replace("$time$", ToJson(time))
-								.Replace("$temperature$", ToJson(temperature))
-								.Replace("$co2$", ToJson(co2))
-								.Replace("$temperatureHistory$", ToJson(manager.Temperature))
-								.Replace("$co2History$", ToJson(manager.Co2)));
-							break;
-					}
-				}
-			});
+                    default:
+                        output.WriteLine(indexContent
+                            .Replace("$time$", ToJson(time))
+                            .Replace("$temperature$", ToJson(temperature))
+                            .Replace("$co2$", ToJson(co2))
+                            .Replace("$temperatureHistory$", ToJson(manager.Temperature))
+                            .Replace("$co2History$", ToJson(manager.Co2)));
+                        break;
+                }
+            });
 		}
 
 		private static string ToJson(object value)

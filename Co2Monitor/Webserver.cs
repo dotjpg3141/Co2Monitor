@@ -6,7 +6,7 @@ namespace Co2Monitor
 {
 	public class Webserver
 	{
-		private readonly HttpListener listener = new HttpListener();
+		private readonly HttpListener listener = new();
 
 		public Logger Logger { get; set; } = new Logger("Webserver");
 		public int Port { get; }

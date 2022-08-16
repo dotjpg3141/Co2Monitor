@@ -12,8 +12,8 @@ namespace Co2Monitor
 		internal static readonly CultureInfo Format = CultureInfo.InvariantCulture;
 
 		private readonly string filePath;
-		private readonly object lockObject = new object();
-		private readonly List<(DateTime, double)> list = new List<(DateTime, double)>();
+		private readonly object lockObject = new();
+		private readonly List<(DateTime, double)> list = new();
 
 		internal DataSeries(string filePath, IEnumerable<(DateTime, double)> collection)
 		{
