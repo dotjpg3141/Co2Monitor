@@ -108,16 +108,26 @@
 
             let parent = context.canvas.parentElement;
 
-            let width = parent.offsetWidth;
-            let height = Math.max(parent.offsetHeight - parent.offsetTop * 1.2, 10);
+            let canvasWidth = parent.offsetWidth;
+            let canvasHeight = Math.max(parent.offsetHeight - parent.offsetTop * 1.2, 10);
 
-            if (width != context.canvas.width || height != context.canvas.height) {
-                context.canvas.width = width;
-                context.canvas.height = height;
+            if (canvasWidth != context.canvas.width || canvasHeight != context.canvas.height) {
+                context.canvas.width = canvasWidth;
+                context.canvas.height = canvasHeight;
             }
+
+            let padding = Math.min(canvasWidth, canvasHeight) * 0.05;
+
+            let width = canvasWidth - padding * 2;
+            let height = canvasHeight - padding;
+
+            let offsetX = padding;
+            let offsetY = 0;
 
             let timeSpan = 1000 * 60 * 60;
             let verticalBarCount;
+
+            let legendStepCount = 12;
 
             switch (location.pathname.replace(/.*\//g, "")) {
                 default:
@@ -140,14 +150,13 @@
             let now = new Date().getTime();
 
             function getX(time) {
-                return width - (now - time) / timeSpan * width;
+                return offsetX + width - (now - time) / timeSpan * width;
             }
 
             context.fillStyle = "#202020";
             context.fillRect(0, 0, context.canvas.width, context.canvas.height);
 
             function renderSeries(items, options) {
-
                 if (!items.length) {
                     return;
                 }
@@ -160,7 +169,7 @@
                 let maxTimeGapPixel = getX(maxTimeGap) - getX(0);
 
                 function getY(value) {
-                    return height - (value - minY) / valueSpan * height;
+                    return offsetY + height - (value - minY) / valueSpan * height;
                 }
 
                 if (options.backgrounds) {
@@ -169,8 +178,23 @@
                         context.fillStyle = background.fillStyle;
                         let min = getY(background.min == null ? minY : background.min);
                         let max = getY(background.max == null ? maxY : background.max);
-                        context.fillRect(0, min, width, max - min);
+                        context.fillRect(offsetX, min, width, max - min);
                     }
+                }
+
+                if (options.legend) {
+                    context.fillStyle = options.strokeStyle;
+                    context.textAlign = options.legend.textAlign;
+                    context.textBaseline = "middle";
+                    context.font = (padding * 0.33) + "px Consolas, Courier New, monospace";
+                    for (let i = 0; i < legendStepCount; i++) {
+                        let value = minY + (maxY - minY) * (i / legendStepCount);
+                        let y = getY(value);
+                        context.fillText(String(value), options.legend.x, y);
+                    }
+
+                    context.textBaseline = "top";
+                    context.fillText(options.legend.text, options.legend.x, offsetY + padding * 0.1);
                 }
 
                 let points = [];
@@ -185,21 +209,29 @@
                 context.strokeStyle = options.strokeStyle;
                 context.lineWidth = 2;
                 context.beginPath();
+
+                let isFirst = true;
                 for (let i = 0; i < points.length; i++) {
                     let element = points[i];
-                    if (i == 0
-                        || i == points.length - 1
-                        || points[i].x - points[i - 1].x > maxTimeGapPixel) {
-                        if (i != 0) {
+
+                    if (element.x < offsetX) {
+                        continue;
+                    }
+
+                    let isLast = i == points.length - 1;
+                    if (isFirst || isLast || points[i].x - points[i - 1].x > maxTimeGapPixel) {
+                        if (!isFirst) {
                             context.stroke();
                         }
-                        if (i != points.length - 1) {
+                        if (!isLast) {
                             context.beginPath();
                             context.moveTo(element.x, element.y);
                         }
                     } else {
                         context.lineTo(element.x, element.y);
                     }
+
+                    isFirst = false;
                 }
             }
 
@@ -212,12 +244,22 @@
                     { fillStyle: "#36361d", min: 800, max: 1200 },
                     { fillStyle: "#361d1d", min: 1200 },
                 ],
+                legend: {
+                    x: offsetX - padding * 0.1,
+                    textAlign: "right",
+                    text: "ppm"
+                }
             });
 
             renderSeries(data.temperature, {
                 minY: 0,
-                maxY: 50,
-                strokeStyle: "blue",
+                maxY: 48,
+                strokeStyle: "#77f",
+                legend: {
+                    x: offsetX + width + padding * 0.1,
+                    textAlign: "left",
+                    text: "°C"
+                }
             });
 
             context.strokeStyle = "#404040";
@@ -228,6 +270,15 @@
                 context.beginPath();
                 context.moveTo(x, 0);
                 context.lineTo(x, height);
+                context.stroke();
+            }
+            for (let i = 1; i < legendStepCount; i++) {
+                let x0 = offsetX;
+                let x1 = offsetX + width;
+                let y = offsetY + (i / legendStepCount) * height;
+                context.beginPath();
+                context.moveTo(x0, y);
+                context.lineTo(x1, y);
                 context.stroke();
             }
             context.globalAlpha = 1.0;
@@ -253,15 +304,15 @@
             margin: auto;
         }
 
-            table tr td:nth-child(1) {
-                text-align: end;
-                padding-right: 0;
-            }
+        table tr td:nth-child(1) {
+            text-align: end;
+            padding-right: 0;
+        }
 
-            table tr td:nth-child(2) {
-                text-align: center;
-                padding-left: 0;
-            }
+        table tr td:nth-child(2) {
+            text-align: center;
+            padding-left: 0;
+        }
 
         .circle::after {
             content: "\2022";
@@ -296,17 +347,17 @@
             text-align: center;
         }
 
-            #links a {
-                background-color: #212121;
-                padding: 0.25em;
-                text-decoration: none;
-                color: white;
-            }
+        #links a {
+            background-color: #212121;
+            padding: 0.25em;
+            text-decoration: none;
+            color: white;
+        }
 
-                #links a:hover {
-                    color: red;
-                    background-color: #1a1a1a;
-                }
+        #links a:hover {
+            color: red;
+            background-color: #1a1a1a;
+        }
 
         #chart-container {
             width: 75%;
@@ -328,7 +379,7 @@
     <table>
         <tr id="temperature">
             <td>
-                <span class="circle" style="color: blue"></span>
+                <span class="circle" style="color: #77f"></span>
                 Temperature
             </td>
             <td>:</td>
