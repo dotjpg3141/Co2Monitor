@@ -136,7 +136,7 @@
                 default:
                 case "hour":
                     timeSpan *= 1;
-                    verticalBarCount = 6;
+                    verticalBarCount = 12;
                     getTimeText = (date) => {
                         return padNumber(date.getHours()) + ":" + padNumber(date.getMinutes());
                     }
@@ -186,20 +186,63 @@
                     return offsetY + height - (value - minY) / valueSpan * height;
                 }
 
+                context.textBaseline = "top";
+                context.font = (padding * 0.33) + "px Consolas, Courier New, monospace";
+                context.fillStyle = "white";
+                context.lineWidth = 1;
+
                 if (options.backgrounds) {
+                    let roundPixel = (pixel) => Math.round(pixel) + 0.5; // align pixel to screen
+
                     for (let i = 0; i < options.backgrounds.length; i++) {
                         let background = options.backgrounds[i];
                         context.fillStyle = background.fillStyle;
-                        let min = getY(background.min == null ? minY : background.min);
-                        let max = getY(background.max == null ? maxY : background.max);
+                        let min = roundPixel(getY(background.min == null ? minY : background.min));
+                        let max = roundPixel(getY(background.max == null ? maxY : background.max));
                         context.fillRect(offsetX, min, width, max - min);
+                    }
+
+                    context.strokeStyle = "#404040";
+                    let timeBetweenVertialBars = timeSpan / verticalBarCount;
+                    context.textAlign = "center";
+
+                    // TODO: align time to 5 minutes/full hour/full day
+                    context.strokeStyle = "#616161";
+                    context.fillStyle = "#aaa";
+                    for (let i = 1; i < verticalBarCount; i++) {
+                        let time = now - i * timeBetweenVertialBars;
+                        let x = roundPixel(getX(time));
+                        context.beginPath();
+                        context.moveTo(x, 0);
+                        context.lineTo(x, height);
+                        context.stroke();
+
+                        let text = getTimeText(new Date(time));
+                        context.fillText(text, x, offsetY + height + padding * 0.1);
+                    }
+
+                    context.textAlign = "left";
+                    let startTime = getTimeText(new Date(now - verticalBarCount * timeBetweenVertialBars));
+                    context.fillText(startTime, offsetX, offsetY + height + padding * 0.1);
+
+                    context.textAlign = "right";
+                    let endTime = getTimeText(new Date(now));
+                    context.fillText(endTime, offsetX + width, offsetY + height + padding * 0.1);
+
+                    for (let i = 1; i < horizontalLegendStepCount; i++) {
+                        let x0 = offsetX;
+                        let x1 = offsetX + width;
+                        let y = offsetY + (i / horizontalLegendStepCount) * height;
+                        context.beginPath();
+                        context.moveTo(x0, y);
+                        context.lineTo(x1, y);
+                        context.stroke();
                     }
                 }
 
                 if (options.legend) {
                     context.fillStyle = options.strokeStyle;
                     context.textAlign = options.legend.textAlign;
-                    context.font = (padding * 0.33) + "px Consolas, Courier New, monospace";
                     for (let i = 0; i < horizontalLegendStepCount; i++) {
                         let value = minY + (maxY - minY) * (i / horizontalLegendStepCount);
                         let y = getY(value);
@@ -276,41 +319,7 @@
                 }
             });
 
-            context.strokeStyle = "#404040";
-            context.globalAlpha = 0.5;
-            let timeBetweenVertialBars = timeSpan / verticalBarCount;
-            context.textAlign = "center";
-            context.fillStyle = "white";
-            for (let i = 1; i < verticalBarCount; i++) {
-                let time = now - i * timeBetweenVertialBars;
-                let x = getX(time);
-                context.beginPath();
-                context.moveTo(x, 0);
-                context.lineTo(x, height);
-                context.stroke();
 
-                let text = getTimeText(new Date(time));
-                context.fillText(text, x, offsetY + height + padding * 0.1);
-            }
-
-            context.textAlign = "left";
-            let startTime = getTimeText(new Date(now - verticalBarCount * timeBetweenVertialBars));
-            context.fillText(startTime, offsetX, offsetY + height + padding * 0.1);
-
-            context.textAlign = "right";
-            let endTime = getTimeText(new Date(now));
-            context.fillText(endTime, offsetX + width, offsetY + height + padding * 0.1);
-
-            for (let i = 1; i < horizontalLegendStepCount; i++) {
-                let x0 = offsetX;
-                let x1 = offsetX + width;
-                let y = offsetY + (i / horizontalLegendStepCount) * height;
-                context.beginPath();
-                context.moveTo(x0, y);
-                context.lineTo(x1, y);
-                context.stroke();
-            }
-            context.globalAlpha = 1.0;
         }
 
         window.onresize = renderChart;
