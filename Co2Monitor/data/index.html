@@ -2,357 +2,371 @@
 <html>
 
 <head>
-	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-	<script type="text/javascript">
-		"use strict";
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <script type="text/javascript">
+        "use strict";
 
-		let lastUpdateTime = 0;
-		let context;
-		let data = {
-			co2: $co2History$,
-			temperature: $temperatureHistory$,
-		};
+        let lastUpdateTime = 0;
+        let context;
+        let data = {
+            co2: $co2History$,
+            temperature: $temperatureHistory$,
+        };
 
-		for (let i = 0; i < data.co2.length; i++) {
-			data.co2[i].x = new Date(data.co2[i].x).getTime();
-		}
+        for (let i = 0; i < data.co2.length; i++) {
+            data.co2[i].x = new Date(data.co2[i].x).getTime();
+        }
 
-		for (let i = 0; i < data.temperature.length; i++) {
-			data.temperature[i].x = new Date(data.temperature[i].x).getTime();
-		}
+        for (let i = 0; i < data.temperature.length; i++) {
+            data.temperature[i].x = new Date(data.temperature[i].x).getTime();
+        }
 
-		let updateInterval = 1000;
-		setInterval(function () {
-			let xhr = new XMLHttpRequest();
-			xhr.onload = function (e) {
-				let response = e.target.responseType === 'json' ? xhr.response : JSON.parse(e.target.responseText);
-				updateViewModel(response);
-			};
-			xhr.timeout = updateInterval * 3;
-			xhr.responseType = "json";
-			xhr.open("GET", "update", true);
-			xhr.send();
-		}, updateInterval);
+        let updateInterval = 1000;
+        setInterval(function () {
+            let xhr = new XMLHttpRequest();
+            xhr.onload = function (e) {
+                let response = e.target.responseType === 'json' ? xhr.response : JSON.parse(e.target.responseText);
+                updateViewModel(response);
+            };
+            xhr.timeout = updateInterval * 3;
+            xhr.responseType = "json";
+            xhr.open("GET", "update", true);
+            xhr.send();
+        }, updateInterval);
 
-		function updateViewModel(obj) {
+        function updateViewModel(obj) {
 
-			let time = new Date(obj.time);
-			let temp = obj.temperature;
-			let co2 = obj.co2;
+            let time = new Date(obj.time);
+            if (time.getTime() < 0) {
+                return; // data not yet initialized -or- we can time travel
+            }
 
-			let co2Classes = "red";
-			if (co2 < 1200) co2Classes = "yellow";
-			if (co2 < 800) co2Classes = "green";
+            let temp = obj.temperature;
+            let co2 = obj.co2;
 
-			update({
-				id: "time",
-				value: time.toLocaleString(),
-			});
+            let co2Classes = "red";
+            if (co2 < 1200) co2Classes = "yellow";
+            if (co2 < 800) co2Classes = "green";
 
-			update({
-				id: "temperature",
-				value: temp.toFixed(1),
-			});
+            update({
+                id: "time",
+                value: time.toLocaleString(),
+            });
 
-			update({
-				id: "co2",
-				value: co2,
-				classes: co2Classes
-			});
+            update({
+                id: "temperature",
+                value: temp.toFixed(1),
+            });
 
-			let updateTime = time.getTime();
-			if (updateTime != lastUpdateTime) {
-				lastUpdateTime = updateTime;
+            update({
+                id: "co2",
+                value: co2,
+                classes: co2Classes
+            });
 
-				data.co2.push({
-					x: updateTime,
-					y: co2,
-				});
+            let updateTime = time.getTime();
+            if (updateTime != lastUpdateTime) {
+                lastUpdateTime = updateTime;
 
-				data.temperature.push({
-					x: updateTime,
-					y: temp,
-				});
+                data.co2.push({
+                    x: updateTime,
+                    y: co2,
+                });
 
-				renderChart();
-			}
-		}
+                data.temperature.push({
+                    x: updateTime,
+                    y: temp,
+                });
 
-		function update(options) {
-			let id = options.id;
-			let classes = options.classes || "";
+                renderChart();
+            }
+        }
 
-			document.getElementById(id).className = classes;
-			document.getElementById(id + "-value").innerHTML = options.value;
-		}
+        function update(options) {
+            let id = options.id;
+            let classes = options.classes || "";
 
-		function renderChart() {
+            document.getElementById(id).className = classes;
+            document.getElementById(id + "-value").innerHTML = options.value;
+        }
 
-			if (!context) {
-				return;
-			}
+        function renderChart() {
 
-			let parent = context.canvas.parentElement;
+            if (!context) {
+                let loadingElement = document.getElementById("loading");
+                if (!loadingElement) {
+                    return;
+                }
+                loadingElement.parentElement.removeChild(loadingElement);
 
-			let width = parent.offsetWidth;
-			let height = Math.max(parent.offsetHeight - parent.offsetTop * 1.2, 10);
+                context = document.getElementById("chart").getContext("2d");
+                if (!context) {
+                    return;
+                }
+            }
 
-			if (width != context.canvas.width || height != context.canvas.height) {
-				context.canvas.width = width;
-				context.canvas.height = height;
-			}
+            let parent = context.canvas.parentElement;
 
-			let timeSpan = 1000 * 60 * 60;
-			let verticalBarCount;
+            let width = parent.offsetWidth;
+            let height = Math.max(parent.offsetHeight - parent.offsetTop * 1.2, 10);
 
-			switch (location.pathname.replace(/.*\//g, "")) {
-				default:
-				case "hour":
-					timeSpan *= 1;
-					verticalBarCount = 10;
-					break;
+            if (width != context.canvas.width || height != context.canvas.height) {
+                context.canvas.width = width;
+                context.canvas.height = height;
+            }
 
-				case "day":
-					timeSpan *= 24;
-					verticalBarCount = 24;
-					break;
+            let timeSpan = 1000 * 60 * 60;
+            let verticalBarCount;
 
-				case "week":
-					timeSpan *= 24 * 7;
-					verticalBarCount = 7;
-					break;
-			}
+            switch (location.pathname.replace(/.*\//g, "")) {
+                default:
+                case "hour":
+                    timeSpan *= 1;
+                    verticalBarCount = 10;
+                    break;
 
-			let now = new Date().getTime();
+                case "day":
+                    timeSpan *= 24;
+                    verticalBarCount = 24;
+                    break;
 
-			function getX(time) {
-				return width - (now - time) / timeSpan * width;
-			}
+                case "week":
+                    timeSpan *= 24 * 7;
+                    verticalBarCount = 7;
+                    break;
+            }
 
-			context.fillStyle = "#202020";
-			context.fillRect(0, 0, context.canvas.width, context.canvas.height);
+            let now = new Date().getTime();
 
-			function renderSeries(items, options) {
+            function getX(time) {
+                return width - (now - time) / timeSpan * width;
+            }
 
-				if (!items.length) {
-					return;
-				}
+            context.fillStyle = "#202020";
+            context.fillRect(0, 0, context.canvas.width, context.canvas.height);
 
-				let minY = options.minY;
-				let maxY = options.maxY;
-				let valueSpan = maxY - minY;
+            function renderSeries(items, options) {
 
-				let maxTimeGap = updateInterval * 10;
-				let maxTimeGapPixel = getX(maxTimeGap) - getX(0);
+                if (!items.length) {
+                    return;
+                }
 
-				function getY(value) {
-					return height - (value - minY) / valueSpan * height;
-				}
+                let minY = options.minY;
+                let maxY = options.maxY;
+                let valueSpan = maxY - minY;
 
-				if (options.backgrounds) {
-					for (let i = 0; i < options.backgrounds.length; i++) {
-						let background = options.backgrounds[i];
-						context.fillStyle = background.fillStyle;
-						let min = getY(background.min == null ? minY : background.min);
-						let max = getY(background.max == null ? maxY : background.max);
-						context.fillRect(0, min, width, max - min);
-					}
-				}
+                let maxTimeGap = updateInterval * 10;
+                let maxTimeGapPixel = getX(maxTimeGap) - getX(0);
 
-				let points = [];
-				for (let i = 0; i < items.length; i++) {
-					points.push({
-						x: getX(items[i].x),
-						y: getY(items[i].y),
-					});
-				}
-				points.push({ x: width, y: points[points.length - 1].y })
+                function getY(value) {
+                    return height - (value - minY) / valueSpan * height;
+                }
 
-				context.strokeStyle = options.strokeStyle;
-				context.lineWidth = 2;
-				context.beginPath();
-				for (let i = 0; i < points.length; i++) {
-					let element = points[i];
-					if (i == 0
-						|| i == points.length - 1
-						|| points[i].x - points[i - 1].x > maxTimeGapPixel) {
-						if (i != 0) {
-							context.stroke();
-						}
-						if (i != points.length - 1) {
-							context.beginPath();
-							context.moveTo(element.x, element.y);
-						}
-					} else {
-						context.lineTo(element.x, element.y);
-					}
-				}
-			}
+                if (options.backgrounds) {
+                    for (let i = 0; i < options.backgrounds.length; i++) {
+                        let background = options.backgrounds[i];
+                        context.fillStyle = background.fillStyle;
+                        let min = getY(background.min == null ? minY : background.min);
+                        let max = getY(background.max == null ? maxY : background.max);
+                        context.fillRect(0, min, width, max - min);
+                    }
+                }
 
-			renderSeries(data.co2, {
-				minY: 0,
-				maxY: 2400,
-				strokeStyle: "white",
-				backgrounds: [
-					{ fillStyle: "#1d361d", max: 800 },
-					{ fillStyle: "#36361d", min: 800, max: 1200 },
-					{ fillStyle: "#361d1d", min: 1200 },
-				],
-			});
+                let points = [];
+                for (let i = 0; i < items.length; i++) {
+                    points.push({
+                        x: getX(items[i].x),
+                        y: getY(items[i].y),
+                    });
+                }
+                points.push({ x: width, y: points[points.length - 1].y })
 
-			renderSeries(data.temperature, {
-				minY: 0,
-				maxY: 50,
-				strokeStyle: "blue",
-			});
+                context.strokeStyle = options.strokeStyle;
+                context.lineWidth = 2;
+                context.beginPath();
+                for (let i = 0; i < points.length; i++) {
+                    let element = points[i];
+                    if (i == 0
+                        || i == points.length - 1
+                        || points[i].x - points[i - 1].x > maxTimeGapPixel) {
+                        if (i != 0) {
+                            context.stroke();
+                        }
+                        if (i != points.length - 1) {
+                            context.beginPath();
+                            context.moveTo(element.x, element.y);
+                        }
+                    } else {
+                        context.lineTo(element.x, element.y);
+                    }
+                }
+            }
 
-			context.strokeStyle = "#404040";
-			context.globalAlpha = 0.5;
-			let timeBetweenVertialBars = timeSpan / verticalBarCount;
-			for (let i = 1; i < verticalBarCount; i++) {
-				let x = getX(now - i * timeBetweenVertialBars);
-				context.beginPath();
-				context.moveTo(x, 0);
-				context.lineTo(x, height);
-				context.stroke();
-			}
-			context.globalAlpha = 1.0;
-		}
+            renderSeries(data.co2, {
+                minY: 0,
+                maxY: 2400,
+                strokeStyle: "white",
+                backgrounds: [
+                    { fillStyle: "#1d361d", max: 800 },
+                    { fillStyle: "#36361d", min: 800, max: 1200 },
+                    { fillStyle: "#361d1d", min: 1200 },
+                ],
+            });
 
-		window.onresize = renderChart;
+            renderSeries(data.temperature, {
+                minY: 0,
+                maxY: 50,
+                strokeStyle: "blue",
+            });
 
-	</script>
+            context.strokeStyle = "#404040";
+            context.globalAlpha = 0.5;
+            let timeBetweenVertialBars = timeSpan / verticalBarCount;
+            for (let i = 1; i < verticalBarCount; i++) {
+                let x = getX(now - i * timeBetweenVertialBars);
+                context.beginPath();
+                context.moveTo(x, 0);
+                context.lineTo(x, height);
+                context.stroke();
+            }
+            context.globalAlpha = 1.0;
+        }
 
-	<style>
-		html,
-		body {
-			font-family: Consolas, Courier New, monospace;
-			background-color: #353535;
-			color: white;
-			width: 100%;
-			height: 100%;
-			margin: 0;
-			overflow: hidden;
-		}
+        window.onresize = renderChart;
 
-		table {
-			margin: auto;
-		}
+    </script>
 
-		table tr td:nth-child(1) {
-			text-align: end;
-			padding-right: 0;
-		}
+    <style>
+        html,
+        body {
+            font-family: Consolas, Courier New, monospace;
+            background-color: #353535;
+            color: white;
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            overflow: hidden;
+        }
 
-		table tr td:nth-child(2) {
-			text-align: center;
-			padding-left: 0;
-		}
+        table {
+            margin: auto;
+        }
 
-		.circle::after {
-			content: "\2022";
-		}
+            table tr td:nth-child(1) {
+                text-align: end;
+                padding-right: 0;
+            }
 
-		#co2,
-		#temperature {
-			font-size: x-large;
-		}
+            table tr td:nth-child(2) {
+                text-align: center;
+                padding-left: 0;
+            }
 
-		#time {
-			color: gray;
-			font-size: small;
-		}
+        .circle::after {
+            content: "\2022";
+        }
 
-		#co2.green {
-			color: lime;
-		}
+        #co2,
+        #temperature {
+            font-size: x-large;
+        }
 
-		#co2.yellow {
-			color: yellow;
-		}
+        #time {
+            color: gray;
+            font-size: small;
+        }
 
-		#co2.red {
-			color: red;
-		}
+        #co2.green {
+            color: lime;
+        }
 
-		#links {
-			margin: auto;
-			margin-top: 1em;
-			margin-bottom: 1em;
-			text-align: center;
-		}
+        #co2.yellow {
+            color: yellow;
+        }
 
-		#links a {
-			background-color: #212121;
-			padding: 0.25em;
-			text-decoration: none;
-			color: white;
-		}
+        #co2.red {
+            color: red;
+        }
 
-		#links a:hover {
-			color: red;
-			background-color: #1a1a1a;
-		}
+        #links {
+            margin: auto;
+            margin-top: 1em;
+            margin-bottom: 1em;
+            text-align: center;
+        }
 
-		#chart-container {
-			width: 75%;
-			height: 100%;
-			margin: auto;
-			overflow: hidden;
-		}
+            #links a {
+                background-color: #212121;
+                padding: 0.25em;
+                text-decoration: none;
+                color: white;
+            }
 
-		#chart {
-			display: block;
-			margin: 0;
-			padding: 0;
-		}
-	</style>
+                #links a:hover {
+                    color: red;
+                    background-color: #1a1a1a;
+                }
+
+        #chart-container {
+            width: 75%;
+            height: 100%;
+            margin: auto;
+            overflow: hidden;
+            text-align: center;
+        }
+
+        #chart {
+            display: block;
+            margin: 0;
+            padding: 0;
+        }
+    </style>
 </head>
 
 <body>
-	<table>
-		<tr id="temperature">
-			<td>
-				<span class="circle" style="color: blue"></span>
-				Temperature
-			</td>
-			<td>:</td>
-			<td><span id="temperature-value">$temperature$</span> °C</td>
-		</tr>
-		<tr id="co2">
-			<td>
-				<span class="circle" style="color: white"></span>
-				CO<sub>2</sub>
-			</td>
-			<td>:</td>
-			<td><span id="co2-value">$co2$</span> ppm</td>
-		</tr>
-		<tr id="time">
-			<td>Last Refresh</td>
-			<td>:</td>
-			<td><span id="time-value">$time$</span></td>
-		</tr>
-	</table>
+    <table>
+        <tr id="temperature">
+            <td>
+                <span class="circle" style="color: blue"></span>
+                Temperature
+            </td>
+            <td>:</td>
+            <td><span id="temperature-value">$temperature$</span> °C</td>
+        </tr>
+        <tr id="co2">
+            <td>
+                <span class="circle" style="color: white"></span>
+                CO<sub>2</sub>
+            </td>
+            <td>:</td>
+            <td><span id="co2-value">$co2$</span> ppm</td>
+        </tr>
+        <tr id="time">
+            <td>Last Refresh</td>
+            <td>:</td>
+            <td><span id="time-value">$time$</span></td>
+        </tr>
+    </table>
 
-	<div id="links">
-		<a href="/hour">Hour</a>
-		<a href="/day">Day</a>
-		<a href="/week">Week</a>
-	</div>
+    <div id="links">
+        <a href="/hour">Hour</a>
+        <a href="/day">Day</a>
+        <a href="/week">Week</a>
+    </div>
 
-	<div id="chart-container">
-		<canvas id="chart"></canvas>
-	</div>
+    <div id="chart-container">
+        <canvas id="chart"></canvas>
+        <div id="loading">Loading...</div>
+    </div>
 
-	<script>
-		context = document.getElementById("chart").getContext("2d");
-		updateViewModel({
-			time: $time$,
-			temperature: $temperature$,
-			co2: $co2$
-		});
-	</script>
+    <script>
+        updateViewModel({
+            time: $time$,
+            temperature: $temperature$,
+            co2: $co2$
+        });
+    </script>
 </body>
 
 </html>

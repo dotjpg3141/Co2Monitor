@@ -31,16 +31,18 @@ namespace Co2Monitor
 
                 // consume input stream
                 var buffer = new byte[4096];
-                var input = context.Request.InputStream;
-                while (await input.ReadAsync(buffer) != 0)
+                using (var input = context.Request.InputStream)
                 {
+                    while (await input.ReadAsync(buffer) != 0)
+                    {
+                    }
                 }
 
                 var time = manager.LastTime;
                 var temperature = manager.Temperature.LastValue;
                 var co2 = manager.Co2.LastValue;
 
-                var output = new StreamWriter(context.Response.OutputStream);
+                using var output = new StreamWriter(context.Response.OutputStream);
                 switch (requestUrl)
                 {
                     case "/update":
@@ -62,7 +64,7 @@ namespace Co2Monitor
 
                         output.WriteLine(indexContent
                             .Replace("$time$", ToJson(time))
-                            .Replace("$temperature$", ToJson(temperature))
+                            .Replace("$temperature$", ToJson(Math.Round(temperature, 1)))
                             .Replace("$co2$", ToJson(co2))
                             .Replace("$temperatureHistory$", ToJson(manager.Temperature))
                             .Replace("$co2History$", ToJson(manager.Co2)));
