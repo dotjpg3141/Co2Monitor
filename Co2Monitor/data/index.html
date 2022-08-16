@@ -124,26 +124,40 @@
             let offsetX = padding;
             let offsetY = 0;
 
+            let horizontalLegendStepCount = 12;
+
             let timeSpan = 1000 * 60 * 60;
             let verticalBarCount;
+            let getTimeText;
 
-            let legendStepCount = 12;
+            let padNumber = (number) => String(number).padStart(2, "0");
 
             switch (location.pathname.replace(/.*\//g, "")) {
                 default:
                 case "hour":
                     timeSpan *= 1;
-                    verticalBarCount = 10;
+                    verticalBarCount = 6;
+                    getTimeText = (date) => {
+                        return padNumber(date.getHours()) + ":" + padNumber(date.getMinutes());
+                    }
                     break;
 
                 case "day":
                     timeSpan *= 24;
-                    verticalBarCount = 24;
+                    verticalBarCount = 12;
+                    getTimeText = (date) => {
+                        return padNumber(date.getHours()) + ":" + padNumber(date.getMinutes());
+                    }
                     break;
 
                 case "week":
                     timeSpan *= 24 * 7;
                     verticalBarCount = 7;
+                    getTimeText = (date) => {
+                        let day = date.getDate();
+                        let month = date.getMonth() + 1;
+                        return padNumber(day) + "." + padNumber(month);
+                    }
                     break;
             }
 
@@ -185,11 +199,11 @@
                 if (options.legend) {
                     context.fillStyle = options.strokeStyle;
                     context.textAlign = options.legend.textAlign;
-                    context.textBaseline = "middle";
                     context.font = (padding * 0.33) + "px Consolas, Courier New, monospace";
-                    for (let i = 0; i < legendStepCount; i++) {
-                        let value = minY + (maxY - minY) * (i / legendStepCount);
+                    for (let i = 0; i < horizontalLegendStepCount; i++) {
+                        let value = minY + (maxY - minY) * (i / horizontalLegendStepCount);
                         let y = getY(value);
+                        context.textBaseline = i == 0 ? "bottom" : "middle";
                         context.fillText(String(value), options.legend.x, y);
                     }
 
@@ -265,17 +279,32 @@
             context.strokeStyle = "#404040";
             context.globalAlpha = 0.5;
             let timeBetweenVertialBars = timeSpan / verticalBarCount;
+            context.textAlign = "center";
+            context.fillStyle = "white";
             for (let i = 1; i < verticalBarCount; i++) {
-                let x = getX(now - i * timeBetweenVertialBars);
+                let time = now - i * timeBetweenVertialBars;
+                let x = getX(time);
                 context.beginPath();
                 context.moveTo(x, 0);
                 context.lineTo(x, height);
                 context.stroke();
+
+                let text = getTimeText(new Date(time));
+                context.fillText(text, x, offsetY + height + padding * 0.1);
             }
-            for (let i = 1; i < legendStepCount; i++) {
+
+            context.textAlign = "left";
+            let startTime = getTimeText(new Date(now - verticalBarCount * timeBetweenVertialBars));
+            context.fillText(startTime, offsetX, offsetY + height + padding * 0.1);
+
+            context.textAlign = "right";
+            let endTime = getTimeText(new Date(now));
+            context.fillText(endTime, offsetX + width, offsetY + height + padding * 0.1);
+
+            for (let i = 1; i < horizontalLegendStepCount; i++) {
                 let x0 = offsetX;
                 let x1 = offsetX + width;
-                let y = offsetY + (i / legendStepCount) * height;
+                let y = offsetY + (i / horizontalLegendStepCount) * height;
                 context.beginPath();
                 context.moveTo(x0, y);
                 context.lineTo(x1, y);
