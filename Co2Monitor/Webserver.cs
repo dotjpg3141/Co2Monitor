@@ -44,7 +44,7 @@ https://stackoverflow.com/a/17824452
 			{
 				var context = await this.listener.GetContextAsync();
 				var task = Task.Run(() => handleConnection(context));
-				if (task.IsFaulted)
+				if (task.Exception != null)
 				{
 					this.Logger.Error(task.Exception);
 				}

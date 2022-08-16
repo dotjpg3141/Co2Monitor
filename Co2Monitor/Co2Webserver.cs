@@ -4,6 +4,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 
 namespace Co2Monitor
@@ -20,7 +21,7 @@ namespace Co2Monitor
 
 			if (Debugger.IsAttached)
 			{
-				Process.Start("http://localhost:" + port);
+				OpenUrl("http://localhost:" + port);
 			}
 
 			var indexPath = "data/index.html";
@@ -32,7 +33,8 @@ namespace Co2Monitor
 
 				if (Debugger.IsAttached)
 				{
-					indexContent = File.ReadAllText(Path.Combine("../..", indexPath));
+					var path = Path.GetFullPath(Path.Combine("../../..", indexPath));
+					indexContent = File.ReadAllText(path);
 				}
 
 				var time = manager.LastTime;
@@ -41,7 +43,7 @@ namespace Co2Monitor
 
 				using (var output = new StreamWriter(context.Response.OutputStream))
 				{
-					switch (context.Request.RawUrl.ToLowerInvariant().TrimEnd('/'))
+					switch (context.Request.RawUrl?.ToLowerInvariant().TrimEnd('/'))
 					{
 						case "/update":
 							context.Response.AddHeader("Content-Type", "application/json; charset=utf-8");
@@ -81,6 +83,35 @@ namespace Co2Monitor
 				X = item.Item1,
 				Y = item.Item2,
 			}));
+		}
+
+		private static void OpenUrl(string url)
+		{
+			try
+			{
+				Process.Start(url);
+			}
+			catch
+			{
+				// hack because of this: https://github.com/dotnet/corefx/issues/10361
+				if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+				{
+					url = url.Replace("&", "^&");
+					Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+				}
+				else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+				{
+					Process.Start("xdg-open", url);
+				}
+				else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+				{
+					Process.Start("open", url);
+				}
+				else
+				{
+					throw;
+				}
+			}
 		}
 	}
 }

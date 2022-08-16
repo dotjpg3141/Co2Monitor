@@ -31,7 +31,7 @@ namespace Co2Monitor
 
 				while (device.IsConnected)
 				{
-					var result = await device.ReadReportAsync();
+					var result = device.ReadReport();
 					var dp = Decode(result.Data);
 					if (dp != null)
 					{

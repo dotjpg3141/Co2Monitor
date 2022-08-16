@@ -11,7 +11,7 @@ namespace Co2Monitor
 		public DataSeries Co2 { get; }
 		public DateTime LastTime { get; private set; }
 
-		public event Action DataPointAdded;
+		public event Action? DataPointAdded;
 
 		public DataManager()
 		{
