@@ -46,8 +46,11 @@
             let co2 = obj.co2;
 
             let co2Classes = "red";
-            if (co2 < 1200) co2Classes = "yellow";
-            if (co2 < 800) co2Classes = "green";
+            let emoji = "🔴"
+            if (co2 < 1200) { co2Classes = "yellow"; emoji = "🟡"; };
+            if (co2 < 800) { co2Classes = "green"; emoji = "🟢"; }
+
+            document.title = emoji + " " + Math.round(co2) + " ppm | " + Math.round(temp * 10) / 10 + " °C | CO₂ Monitor";
 
             update({
                 id: "time",
